@@ -64,6 +64,8 @@
   <footer>
     <div class="menu">
       <button onclick="showPage('home')">Home</button>
+      <button onclick="showPage('e')">e</button>
+      <button onclick="showPage('x')">x</button>
       <button onclick="showPage('about')">About</button>
     </div>
   </footer>
@@ -79,8 +81,16 @@
         content.innerHTML = `
           <p>GAILNIREUS ialah website ringkas dengan tema gelap (black & grey).</p>
         `;
-      }
+      } else if (page === "e") {
+        content.innerHTML = `
+          <p>e</p>
+        `;
+    } else if (page === "x") {
+        content.innerHTML = `
+          <p>x</p>
+        `;
     }
+  }
   </script>
 
 </body>
