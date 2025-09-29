@@ -1,70 +1,61 @@
 function showPageZ() {
   const content = document.getElementById("content");
   content.innerHTML = `
-    <h2>Custom Terrain Map</h2>
-    <canvas id="terrainCanvas" width="500" height="500"></canvas>
-    <p>Gunakan arrow keys untuk gerakkan kotak hijau (player).</p>
+    <h2>GAILNIREUS Map</h2>
+    <div style="position:relative; display:inline-block; margin:20px auto;">
+      <img src="gailnireusmapV7.jpg" usemap="#mymap" 
+           style="width:660px; height:376px; border:1px solid #333; display:block;">
+
+      <!-- Tooltip -->
+      <div id="tooltip" style="
+          position:absolute;
+          background:#222;
+          color:#fff;
+          padding:5px 10px;
+          border-radius:5px;
+          font-size:0.9em;
+          pointer-events:none;
+          display:none;
+          z-index:1000;
+      "></div>
+    </div>
+
+    <map name="mymap">
+      <!-- Contoh area -->
+      <area shape="rect" coords="50,50,150,100" href="#"
+            onmousemove="showTooltip(event,'Kawasan Tanah Utama')" 
+            onmouseout="hideTooltip()" alt="Tanah Utama">
+
+      <area shape="circle" coords="300,200,40" href="#"
+            onmousemove="showTooltip(event,'Sungai')" 
+            onmouseout="hideTooltip()" alt="Sungai">
+
+      <area shape="poly" coords="500,50,550,80,540,130,490,110" href="#"
+            onmousemove="showTooltip(event,'Gunung')" 
+            onmouseout="hideTooltip()" alt="Gunung">
+
+      <area shape="rect" coords="100,250,200,300" href="#"
+            onmousemove="showTooltip(event,'Hutan')" 
+            onmouseout="hideTooltip()" alt="Hutan">
+
+      <area shape="circle" coords="400,100,30" href="#"
+            onmousemove="showTooltip(event,'Desa')" 
+            onmouseout="hideTooltip()" alt="Desa">
+    </map>
   `;
 
-  const canvas = document.getElementById("terrainCanvas");
-  const ctx = canvas.getContext("2d");
+  // Tooltip logic
+  const tooltip = document.getElementById("tooltip");
 
-  const TILE_SIZE = 40;
-  const ROWS = 12;
-  const COLS = 12;
-
-  const terrainMap = [
-    [2,2,2,2,2,2,2,2,2,2,2,2],
-    [2,0,0,0,0,0,0,0,0,0,0,2],
-    [2,0,1,0,0,0,1,0,0,0,0,2],
-    [2,0,0,0,2,2,0,0,0,0,0,2],
-    [2,0,0,0,0,0,0,0,0,0,0,2],
-    [2,0,0,1,0,0,0,0,0,1,0,2],
-    [2,0,0,0,0,2,2,0,0,0,0,2],
-    [2,0,0,0,0,0,0,0,0,0,0,2],
-    [2,0,0,0,1,0,0,0,1,0,0,2],
-    [2,0,0,0,0,0,0,0,0,0,0,2],
-    [2,0,0,0,0,0,0,0,0,0,0,2],
-    [2,2,2,2,2,2,2,2,2,2,2,2],
-  ];
-
-  let player = { x: 1, y: 1 };
-
-  function drawMap() {
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const tile = terrainMap[r][c];
-        if (tile === 0) ctx.fillStyle = "#654321";      // tanah
-        else if (tile === 1) ctx.fillStyle = "#0077ff"; // air
-        else if (tile === 2) ctx.fillStyle = "#888";    // gunung
-        ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      }
-    }
-
-    // Draw player
-    ctx.fillStyle = "#0f0";
-    ctx.fillRect(player.x*TILE_SIZE, player.y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  window.showTooltip = function(e, text){
+    const rect = e.target.getBoundingClientRect();
+    tooltip.style.left = (e.clientX - rect.left + 15) + "px";
+    tooltip.style.top = (e.clientY - rect.top + 15) + "px";
+    tooltip.innerHTML = text;
+    tooltip.style.display = "block";
   }
 
-  function canMove(x, y) {
-    if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return false;
-    return terrainMap[y][x] === 0;
+  window.hideTooltip = function(){
+    tooltip.style.display = "none";
   }
-
-  window.addEventListener("keydown", function(e) {
-    let newX = player.x;
-    let newY = player.y;
-    if (e.key === "ArrowUp") newY--;
-    else if (e.key === "ArrowDown") newY++;
-    else if (e.key === "ArrowLeft") newX--;
-    else if (e.key === "ArrowRight") newX++;
-
-    if (canMove(newX, newY)) {
-      player.x = newX;
-      player.y = newY;
-      drawMap();
-    }
-  });
-
-  drawMap();
 }
