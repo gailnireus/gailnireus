@@ -3,7 +3,7 @@ function showPageZ() {
   content.innerHTML = `
     <h2>GAILNIREUS Map</h2>
     <div style="position:relative; display:inline-block; margin:20px auto;">
-      <img src="gailnireusmapV7.jpg" usemap="#mymap" 
+      <img src="images/gailnireusmapV7.jpg" usemap="#mymap" 
            style="width:660px; height:376px; border:1px solid #333; display:block;">
 
       <!-- Tooltip -->
@@ -21,7 +21,7 @@ function showPageZ() {
     </div>
 
     <map name="mymap">
-      <!-- Contoh area -->
+      <!-- Contoh area clickable -->
       <area shape="rect" coords="50,50,150,100" href="#"
             onmousemove="showTooltip(event,'Kawasan Tanah Utama')" 
             onmouseout="hideTooltip()" alt="Tanah Utama">
