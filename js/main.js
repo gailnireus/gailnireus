@@ -3,12 +3,10 @@ function showPage(page) {
 
   if (page === "home") {
     content.innerHTML = `
-      <h1>Welcome</h1>
-      <p>Ini laman utama untuk projek GAILNIREUS.</p>
+      <h1>welcome</h1>
     `;
   } else if (page === "about") {
-    content.innerHTML = `
-      <h1>About</h1>
+    content.innerHTML = ` 
       <p>GAILNIREUS ialah website ringkas dengan tema gelap (black & grey).</p>
     `;
   } else if (page === "e") {
