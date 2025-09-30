@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advertisement</title>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background: #000;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  text-align: center;
+}
+.container {
+  max-width: 600px;
+  width: 90%;
+}
+.ad-popup {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.95);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.ad-popup.show { opacity: 1; }
+.ad-banner, .ad-video { width: 100%; margin: 15px 0; }
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin-top: 20px;
+  cursor: pointer;
+  background: #111;
+  color: #fff;
+  border: 1px solid #888;
+  border-radius: 4px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Sponsored Content</h2>
+  <p>Preparing game...</p>
+</div>
+
+<div class="ad-popup" id="adPopup">
+  <h3>Advertisement</h3>
+  <p>Watch this ad before continuing!</p>
+
+  <!-- Banner AdSense 1 -->
+  <div class="ad-banner">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXX"
+         data-ad-slot="1111111111"
+         data-ad-format="auto"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </div>
+
+  <!-- Banner AdSense 2 -->
+  <div class="ad-banner">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXX"
+         data-ad-slot="2222222222"
+         data-ad-format="auto"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </div>
+
+  <!-- Video AdSense -->
+  <div class="ad-video">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-format="fluid"
+         data-ad-layout-key="-fg+5n+6t-e7+3y"
+         data-ad-client="ca-pub-XXXXXXXX"
+         data-ad-slot="3333333333"></ins>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </div>
+
+  <button id="continueBtn" disabled>Continue in <span id="countdown">5</span>s</button>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const target = params.get('target');
+
+const adPopup = document.getElementById('adPopup');
+const continueBtn = document.getElementById('continueBtn');
+const countdownSpan = document.getElementById('countdown');
+
+// Popup automatik muncul
+window.addEventListener('load', () => {
+  adPopup.classList.add('show');
+
+  // Countdown 5 saat
+  let countdown = 5;
+  const interval = setInterval(() => {
+    countdown--;
+    countdownSpan.innerText = countdown;
+    if (countdown <= 0) {
+      clearInterval(interval);
+      continueBtn.disabled = false;
+      countdownSpan.innerText = '';
+    }
+  }, 1000);
+});
+
+// Tombol Continue
+continueBtn.addEventListener('click', () => {
+  if(target) window.location.href = target;
+});
+</script>
+
+</body>
+</html>
