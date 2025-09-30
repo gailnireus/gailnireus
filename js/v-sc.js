@@ -44,7 +44,7 @@ const specialCells = {
   '55-55': { color:'#fff', tooltip:'gailnireus zone 3\nowned: gail\nprice: 372950.73e', population:true, type:'special'},
 
   // ===== Example link to game (no ads) =====
-  '33-33': { color:'#66f', tooltip:'gailnireus studio', link:'../game/gailnireusstudioV3.7.html' }
+  '33-33': { color:'#66f', tooltip:'gailnireus studio', link:'game/gailnireusstudioV3.7.html' }
 };
 
 // ===== HELPER FUNCTION: ADD ROAD =====
