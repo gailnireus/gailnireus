@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Gailnireus Studio V3.7</title>
+<style>
+:root{
+  --bg:#000; --text:#9a9a9a; --muted:#777; --white:#fff; --gallery-bg:#dcdcdc; --highlight:#0f0;
+}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Arial;line-height:1.4}
+.wrap{max-width:980px;margin:12px auto;padding:8px}
+h1{color:var(--text);font-size:18px;margin:0 0 6px}
+.status{padding:6px 0;margin-bottom:10px;font-weight:600;}
+.studio{display:flex;gap:12px;flex-wrap:wrap}
+.left,.right{flex:1;min-width:280px}
+.canvasBox{background:transparent;padding:8px;border-radius:6px}
+canvas{background:#fff;border:1px solid #ddd;display:block;margin:0 auto;width:100%;max-width:740px;height:auto;touch-action:none}
+.jobBox{margin-top:10px;padding:8px;border-radius:6px;background:#0b0b0b;border:1px dashed #222;color:var(--text)}
+.jobDesc{color:var(--text);font-size:14px;margin-bottom:4px}
+.actions{margin-top:8px}
+.actionText{display:inline-block;padding:5px 8px;margin:3px;border-radius:6px;cursor:pointer;color:var(--text);user-select:none}
+.actionText:hover{background:#111}
+.brushSettings{margin-top:6px;display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text)}
+input[type="color"]{width:34px;height:24px;border:0;padding:0;background:#fff}
+.galleryWrap{background:var(--gallery-bg);padding:8px;border-radius:6px;color:#000}
+.galleryGrid{display:flex;flex-wrap:wrap;gap:8px;max-height:260px;overflow:auto;padding:6px;border:1px solid #bdbdbd}
+.thumb{width:90px;height:70px;object-fit:cover;border:1px solid #888;cursor:pointer}
+.logWrap{margin-top:10px;background:#0b0b0b;padding:8px;border-radius:6px;color:var(--text)}
+.logTableWrap{max-height:220px;overflow:auto}
+table{width:100%;border-collapse:collapse;color:var(--text);font-size:12px}
+thead th{position:sticky;top:0;background:#0b0b0b;padding:6px;border-bottom:1px solid #222;text-align:left}
+td,th{padding:6px;border-bottom:1px dashed #222}
+.rightAlign{text-align:right}
+#notify{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:6px;display:none;z-index:1000;font-size:14px}
+.confirmBox{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:2000}
+.confirmContent{background:#111;padding:16px;border-radius:8px;text-align:center;color:var(--text)}
+.confirmActions{margin-top:12px;display:flex;gap:12px;justify-content:center}
+@media (max-width:760px){ .studio{flex-direction:column} canvas{height:220px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Gailnireus Studio V3.7</h1>
+<div class="status" id="statusBar">| Level: 1 | XP: 0 | Wallet: 0.00e | Achievement: — |</div>
+
+<div class="studio">
+  <div class="left">
+    <div class="canvasBox">
+      <canvas id="canvas" width="800" height="520"></canvas>
+      <div class="brushSettings">
+        <label>Brush: <input type="range" id="brushSize" min="1" max="40" value="3"></label>
+        <label>Color: <input type="color" id="brushColor" value="#000000"></label>
+      </div>
+      <div class="actions">
+        <span class="actionText" onclick="undo()">Undo</span>
+        <span class="actionText" onclick="redo()">Redo</span>
+        <span class="actionText" onclick="clearCanvas()">Clear</span>
+        <span class="actionText" onclick="saveAndSubmit()">Submit Job</span>
+        <span class="actionText" onclick="confirmUpgradeGallery()">Upgrade Gallery</span>
+        <span class="actionText" onclick="confirmResetGame()">Reset</span>
+        <span class="actionText" id="eraserBtn">Eraser</span>
+      </div>
+      <div class="jobBox" id="jobBox">
+        <div class="muted smallText">Current Job</div>
+        <div class="jobDesc" id="jobDesc">—</div>
+        <div class="muted smallText">Range: <span id="jobRange">-</span> | Reward: <strong id="jobAmount">-</strong>e</div>
+        <div class="muted smallText" id="jobStatus">Status: —</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="galleryWrap">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Gallery</div>
+        <div class="galleryInfo">Slots: <span id="slots">5</span> | Used: <span id="used">0</span></div>
+      </div>
+      <div class="galleryGrid" id="galleryGrid"></div>
+      <div class="galleryInfo">Click painting to SELL or DOWNLOAD.</div>
+    </div>
+
+    <div class="logWrap">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Activity Log</div>
+        <div class="muted">latest on top</div>
+      </div>
+      <div class="logTableWrap">
+        <table id="logTable">
+          <thead>
+            <tr>
+              <th>time</th><th>commission</th><th>tax</th><th>rent</th><th>net</th><th>bonus</th>
+            </tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="notify"></div>
+
+<div id="confirmBox" class="confirmBox">
+  <div class="confirmContent">
+    <p id="confirmMessage">Are you sure?</p>
+    <div class="confirmActions">
+      <span class="actionText" id="confirmYes">Yes</span>
+      <span class="actionText" id="confirmNo">No</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* -----------------------------
+Core & State
+----------------------------- */
+const KEY='gailnireus_v3.7_state';
+const RENT=0.01, TAX_RATE=0.01, UPG_COST=7.00, UPG_SLOT=1, MAX_LEVEL=70, MAX_L1=3.00, MAX_L70=300.00;
+const slope=(MAX_L70-MAX_L1)/(MAX_LEVEL-1);
+let state={level:1,xp:0,wallet:0,slots:5,paintings:[],logs:[],achievements:[],currentJob:null};
+
+function fmt(n){return Number(n).toFixed(2);}
+function notify(msg){const el=document.getElementById('notify');el.innerText=msg;el.style.display='block';setTimeout(()=>el.style.display='none',2200);}
+function saveState(){localStorage.setItem(KEY,JSON.stringify(state));}
+function loadState(){const r=localStorage.getItem(KEY);if(r)try{Object.assign(state,JSON.parse(r));}catch(e){}}
+function commissionRangeForLevel(level){return {min: +(0.01*level).toFixed(2), max: +(MAX_L1+slope*(level-1)).toFixed(2)};}
+const JOB_TEMPLATES=["Portrait","Landscape","Abstract","Poster","Still-life","Fantasy creature","Minimalist","Pet portrait","Cafe mural","Moody seascape"];
+function generateJobAuto(){const r=commissionRangeForLevel(state.level);let amount=+(Math.random()*(r.max-r.min)+r.min).toFixed(2);let isRare=Math.random()<0.10;if(isRare)amount=+(amount*2).toFixed(2);const desc=JOB_TEMPLATES[Math.floor(Math.random()*JOB_TEMPLATES.length)];state.currentJob={desc:(isRare?'🔥 Rare: ':'')+desc,min:r.min,max:r.max,amt:amount,rare:!!isRare,status:'New'};saveState();renderJobUI();}
+function renderStatusBar(){const el=document.getElementById('statusBar');const ach=state.latestAchievement?state.latestAchievement:'—';el.textContent=`| Level: ${state.level} | XP: ${state.xp} | Wallet: ${fmt(state.wallet)}e | Achievement: ${ach} |`;}
+function renderJobUI(){const jobDesc=document.getElementById('jobDesc');const jobRange=document.getElementById('jobRange');const jobAmount=document.getElementById('jobAmount');const jobStatus=document.getElementById('jobStatus');if(!state.currentJob){jobDesc.textContent='—';jobRange.textContent='-';jobAmount.textContent='-';jobStatus.textContent=`Status: —`;return;}jobDesc.textContent=state.currentJob.desc;jobRange.textContent=`${fmt(state.currentJob.min)}e - ${fmt(state.currentJob.max)}e`;jobAmount.textContent=fmt(state.currentJob.amt);jobStatus.textContent=`Status: ${state.currentJob.status}`;}
+function renderLog(){const body=document.getElementById('logBody');body.innerHTML='';state.logs.slice().reverse().forEach(l=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${new Date(l.ts).toLocaleString()}</td><td class="rightAlign">${fmt(l.commission)}e</td><td class="rightAlign">${fmt(l.tax)}e</td><td class="rightAlign">${fmt(l.rent)}e</td><td class="rightAlign">${fmt(l.net)}e</td><td class="rightAlign">${l.bonusText||''}</td>`;body.appendChild(tr);});}
+function updateAllUI(){renderStatusBar();renderJobUI();renderGallery();renderLog();}
+
+/* -----------------------------
+Confirm popup
+----------------------------- */
+let confirmCallback=null;
+let confirmDownloadCallback=null;
+function showConfirm(message,callback){
+  const box=document.getElementById('confirmBox');
+  document.getElementById('confirmMessage').textContent=message;
+  confirmCallback=callback;
+  confirmDownloadCallback=null;
+  box.style.display='flex';
+}
+function showConfirmSellOrDownload(message, sellCallback, downloadCallback){
+  const box = document.getElementById('confirmBox');
+  document.getElementById('confirmMessage').textContent = message;
+  confirmCallback = sellCallback;
+  confirmDownloadCallback = downloadCallback;
+  box.style.display = 'flex';
+  if(!document.getElementById('confirmDownload')){
+    const downloadBtn = document.createElement('span');
+    downloadBtn.id = 'confirmDownload';
+    downloadBtn.className = 'actionText';
+    downloadBtn.textContent = 'Download';
+    downloadBtn.onclick = () => {
+      box.style.display='none';
+      if(confirmDownloadCallback) confirmDownloadCallback();
+      confirmDownloadCallback = null;
+      confirmCallback = null;
+    };
+    document.querySelector('.confirmActions').appendChild(downloadBtn);
+  }
+}
+function confirmAnswer(ans){document.getElementById('confirmBox').style.display='none';if(confirmCallback)confirmCallback(ans);confirmCallback=null;confirmDownloadCallback=null;}
+document.getElementById('confirmYes').onclick=()=>confirmAnswer(true);
+document.getElementById('confirmNo').onclick=()=>confirmAnswer(false);
+function confirmResetGame(){showConfirm('Reset all game data? This will clear LocalStorage and restart.',yes=>{if(yes)resetGame();});}
+function confirmUpgradeGallery(){showConfirm(`Upgrade gallery: +${UPG_SLOT} slot(s) for ${fmt(UPG_COST)}e?`, yes => {if(yes) upgradeGallery();});}
+
+/* -----------------------------
+Achievements & Level up
+----------------------------- */
+const ACH_DEFS = {first_paint:{label:'First Painting', bonusXP:10, bonusText:'+10 XP'},first_sale:{label:'First Sale', bonusXP:15, bonusText:'+15 XP'},lv5:{label:'Reach Level 5', bonusXP:50, bonusText:'+50 XP'},rich100:{label:'Wallet 100e', bonusXP:100, bonusText:'+100 XP'}};
+function unlockAchievement(key){if(state.achievements.includes(key))return;const def=ACH_DEFS[key];if(!def)return;state.achievements.push(key);state.latestAchievement=def.label;state.xp+=def.bonusXP;state.logs.push({ts:Date.now(), commission:0, tax:0, rent:0, net:0, bonusText:def.bonusText+' (achievement)'});saveState();updateAllUI();notify(`Achievement unlocked: ${def.label} (${def.bonusText})`);}
+function checkLevelUp(){let leveled=false;while(state.level<MAX_LEVEL && state.xp>=100*state.level){state.xp-=100*state.level;state.level+=1;leveled=true;state.wallet=+(state.wallet+1.00).toFixed(2);state.logs.push({ts:Date.now(),commission:0,tax:0,rent:0,net:0,bonusText:'+1.00e (level up bonus)'});}if(leveled){saveState();notify(`Level up! Now level ${state.level}`);}}
+  
+  /* -----------------------------
+Canvas & Drawing + Realistic Eraser
+----------------------------- */
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+let painting=false, undoStack=[], redoStack=[], blankDataURL=null;
+const brushSizeEl=document.getElementById('brushSize');
+const brushColorEl=document.getElementById('brushColor');
+let eraserActive = false;
+
+const eraserBtn = document.getElementById('eraserBtn');
+eraserBtn.onclick = () => {
+  eraserActive = !eraserActive;
+  eraserBtn.style.background = eraserActive ? '#333' : '';
+  eraserBtn.textContent = eraserActive ? 'Eraser ON' : 'Eraser';
+};
+
+function resizeCanvasToDisplaySize(){
+  const rect=canvas.getBoundingClientRect();
+  const ratio=window.devicePixelRatio||1;
+  const cssW=Math.round(rect.width);
+  const cssH=Math.round(rect.height||rect.width*0.6);
+  const desiredWidth=Math.round(cssW*ratio);
+  const desiredHeight=Math.round(cssH*ratio);
+  if(canvas.width===desiredWidth && canvas.height===desiredHeight){ctx.setTransform(ratio,0,0,ratio,0,0);return;}
+  const oldData=canvas.toDataURL();
+  canvas.width=desiredWidth; canvas.height=desiredHeight;
+  ctx.setTransform(ratio,0,0,ratio,0,0);
+  if(oldData){
+    const img=new Image();
+    img.onload=()=>{ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.setTransform(ratio,0,0,ratio,0,0);updateBlankSnapshot();};
+    img.src=oldData;
+  }else updateBlankSnapshot();
+}
+
+function updateBlankSnapshot(){const tmp=document.createElement('canvas');tmp.width=canvas.width;tmp.height=canvas.height;blankDataURL=tmp.toDataURL();}
+function posFromEvent(e){const rect=canvas.getBoundingClientRect();const clientX=e.touches?e.touches[0].clientX:e.clientX;const clientY=e.touches?e.touches[0].clientY:e.clientY;return {x:clientX-rect.left, y:clientY-rect.top};}
+
+function saveCanvasStateForUndo(){undoStack.push(canvas.toDataURL()); if(undoStack.length>80)undoStack.shift(); redoStack=[];}
+function undo(){if(undoStack.length===0){notify('Nothing to undo');return;} redoStack.push(canvas.toDataURL()); const data=undoStack.pop(); const img=new Image(); img.onload=()=>{ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); ctx.setTransform(window.devicePixelRatio||1,0,0,window.devicePixelRatio||1,0,0);}; img.src=data;}
+function redo(){if(redoStack.length===0){notify('Nothing to redo');return;} undoStack.push(canvas.toDataURL()); const data=redoStack.pop(); const img=new Image(); img.onload=()=>{ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); ctx.setTransform(window.devicePixelRatio||1,0,0,window.devicePixelRatio||1,0,0);}; img.src=data;}
+function clearCanvas(){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.setTransform(window.devicePixelRatio||1,0,0,window.devicePixelRatio||1,0,0); undoStack=[]; redoStack=[]; updateBlankSnapshot();}
+function isCanvasBlank(){if(blankDataURL===null) updateBlankSnapshot(); return canvas.toDataURL()===blankDataURL;}
+
+/* -----------------------------
+Drawing functions
+----------------------------- */
+function startDraw(e){
+  e.preventDefault();
+  painting=true;
+  saveCanvasStateForUndo();
+  const p=posFromEvent(e);
+  ctx.beginPath();
+  ctx.lineWidth=Number(brushSizeEl.value);
+  ctx.lineCap='round';
+  ctx.strokeStyle=brushColorEl.value;
+  ctx.globalCompositeOperation = eraserActive ? 'destination-out' : 'source-over';
+  ctx.moveTo(p.x,p.y);
+  ctx.lineTo(p.x+0.01,p.y+0.01);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(p.x,p.y);
+}
+
+function endDraw(e){
+  painting=false;
+  ctx.beginPath();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function draw(e){
+  e.preventDefault();
+  if(!painting) return;
+  const p=posFromEvent(e);
+  ctx.lineWidth=Number(brushSizeEl.value);
+  ctx.lineCap='round';
+  ctx.strokeStyle=brushColorEl.value;
+  ctx.globalCompositeOperation = eraserActive ? 'destination-out' : 'source-over';
+  ctx.lineTo(p.x,p.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(p.x,p.y);
+}
+
+/* -----------------------------
+Job submit & sell
+----------------------------- */
+function saveAndSubmit(){
+  if(!state.currentJob){ notify('No job available.'); return; }
+  if(isCanvasBlank()){ notify('Canvas empty — cannot submit an empty painting.'); return; }
+  if(state.paintings.length>=state.slots){ notify('Gallery full — sell or upgrade before submitting.'); return; }
+  const dataURL=canvas.toDataURL();
+  const id=Date.now()+'_'+Math.floor(Math.random()*1000);
+  const commission=state.currentJob.amt;
+  const tax=+(commission*TAX_RATE).toFixed(2);
+  const rent=+(RENT).toFixed(2);
+  const net=+(commission-tax-rent).toFixed(2);
+  const xpGain=Math.floor(Math.random()*5)+3;
+  state.wallet=+(state.wallet+net).toFixed(2);
+  state.xp+=xpGain;
+  state.paintings.push({id,dataURL,jobAmount:commission,ts:Date.now()});
+  state.logs.push({ts:Date.now(),commission,tax,rent,net,bonusText:''});
+  state.currentJob.status='Completed';
+  if(!state.achievements.includes('first_paint')) unlockAchievement('first_paint');
+  checkLevelUp();
+  generateJobAuto();
+  saveState(); updateAllUI(); clearCanvas();
+  notify(`Job submitted: +${xpGain} XP, +${fmt(net)}e`);
+}
+
+function sellPainting(id){
+  const idx=state.paintings.findIndex(p=>p.id===id);
+  if(idx===-1) return;
+  const p=state.paintings[idx];
+  const sellPrice=+(p.jobAmount*0.5).toFixed(2);
+  state.wallet=+(state.wallet+sellPrice).toFixed(2);
+  state.paintings.splice(idx,1);
+  state.logs.push({ts:Date.now(),commission:0,tax:0,rent:0,net:sellPrice,bonusText:''});
+  if(!state.achievements.includes('first_sale')) unlockAchievement('first_sale');
+  saveState(); updateAllUI(); notify(`Sold painting for ${fmt(sellPrice)}e`);
+}
+
+function downloadPainting(dataURL, filename){
+  const a = document.createElement('a');
+  a.href = dataURL;
+  a.download = filename;
+  a.click();
+}
+
+/* -----------------------------
+Render Gallery with Sell/Download
+----------------------------- */
+function renderGallery(){
+  const g=document.getElementById('galleryGrid'); g.innerHTML='';
+  state.paintings.slice().reverse().forEach(p=>{
+    const img=document.createElement('img');
+    img.src=p.dataURL; img.className='thumb';
+    img.title=`Job price ${fmt(p.jobAmount)}e — click to SELL or DOWNLOAD`;
+    img.onclick=()=>{
+      showConfirmSellOrDownload(
+        `Sell this painting for ${fmt(p.jobAmount*0.5)}e or Download?`,
+        yes => { if(yes) sellPainting(p.id); },
+        () => { downloadPainting(p.dataURL, `painting_${p.id}.png`); notify('Downloaded painting'); }
+      );
+    };
+    g.appendChild(img);
+  });
+  document.getElementById('slots').textContent=state.slots;
+  document.getElementById('used').textContent=state.paintings.length;
+}
+
+/* -----------------------------
+Gallery upgrade & Reset
+----------------------------- */
+function upgradeGallery(){
+  if(state.wallet<UPG_COST){ notify(`Not enough funds. Need ${fmt(UPG_COST)}e.`); return; }
+  state.wallet=+(state.wallet-UPG_COST).toFixed(2);
+  state.slots+=UPG_SLOT;
+  state.logs.push({ts:Date.now(),commission:0,tax:0,rent:0,net:0,bonusText:`- ${fmt(UPG_COST)}e (upgrade)`});
+  saveState(); updateAllUI(); notify('Gallery upgraded.');
+}
+
+function resetGame(){
+  localStorage.removeItem(KEY);
+  location.reload();
+}
+
+/* -----------------------------
+Initialize
+----------------------------- */
+function init(){
+  loadState();
+  updateAllUI();
+  generateJobAuto();
+  resizeCanvasToDisplaySize();
+}
+init();
+
+/* -----------------------------
+Canvas event listeners
+----------------------------- */
+canvas.addEventListener('mousedown',startDraw);
+canvas.addEventListener('touchstart',startDraw);
+canvas.addEventListener('mousemove',draw);
+canvas.addEventListener('touchmove',draw);
+canvas.addEventListener('mouseup',endDraw);
+canvas.addEventListener('touchend',endDraw);
+window.addEventListener('resize',resizeCanvasToDisplaySize);
+</script>
+</body>
+</html>
