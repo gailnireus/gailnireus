@@ -50,8 +50,8 @@ addBuilding(22, 7, 'gail penthouse\nowned: gail nireus\nprice: 220700.00e\nperso
 addBuilding(3, 11, 'gail mansion\nowned: gail nireus\nprice: 31100.00e\npersonal property', 'residential');
 
 // ====== DEVELOPER ROADS (PERMANENT) ======
-addRoad(10, 8, 24, 10);
-addRoad(11, 9, 8, 12);
+addRoad(8, 8, 24, 8);
+addRoad(8, 8, 8, 11);
 addRoad(2, 12, 8, 12);
 
 // ====== INIT MAP ======
