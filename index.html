@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gailnireus - gn</title>
+<style>
+  html,body{
+    margin:0; padding:0;
+    background:#0b0b0c; color:#ddd;
+    font-family: monospace;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    height:100vh; user-select:none;
+  }
+  #header{
+    position:fixed;
+    top:15px; left:50%;
+    transform:translateX(-50%);
+    font-weight:bold;
+    font-size:1.2rem;
+  }
+  #wrapper{ 
+    text-align:center; 
+    margin-top:50px;
+  }
+  #center{ 
+    line-height:1.6; 
+  }
+  .popup{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    background:#111; border:1px solid #333;
+    padding:14px 18px;
+    border-radius:8px;
+    display:none;
+  }
+  .center-link{
+    margin:0 6px;
+    cursor:pointer;
+    color:#a855f7;
+  }
+  input{
+    background:#000; border:1px solid #333;
+    color:#a855f7; text-align:center;
+    width:70px;
+    margin-top:6px;
+  }
+  .pulse-dot{
+    animation:pulse 1.6s infinite;
+    color:#a855f7;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:0.3;}
+    50%{opacity:1;}
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER STICKY -->
+<div id="header">gailnireus</div>
+
+<!-- STATS WRAPPER -->
+<div id="wrapper">
+  <div id="center">
+    <div>tag: —</div>
+    <div>time: —</div>
+    <div>cash: —</div>
+  </div>
+</div>
+
+<!-- POPUP BOX -->
+<div id="popup" class="popup">
+  <div>enter 3-digit tag:</div>
+  <input id="tag-input" maxlength="3" />
+  <div style="margin-top:10px;">
+    <span id="save-btn" class="center-link">[save]</span>
+    <span id="load-btn" class="center-link">[load]</span>
+    <span id="reset-btn" class="center-link">[reset]</span>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".json" style="display:none"/>
+
+<!-- DEXIE & SCRIPT -->
+<script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+<script>
+(async function(){
+const CASH_PER_MIN = 0.01;
+const TAX_RATE = 0.01;
+const TAX_INTERVAL = 7 * 60 * 1000;
+let lastTax = Date.now();
+
+const db = new Dexie('gn_db_v1');
+db.version(1).stores({ player:'tag,cash,createdAt,lastUpdated' });
+
+const center = document.getElementById('center');
+const popup = document.getElementById('popup');
+const tagInput = document.getElementById('tag-input');
+const fileInput = document.getElementById('file-input');
+
+const fmtMoney = n => n.toFixed(2) + 'e';
+const spinners = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+let spinIndex=0;
+setInterval(()=>{spinIndex=(spinIndex+1)%spinners.length;},500);
+
+let current=null;
+let ticker=null;
+const now=()=>Date.now();
+
+const calc=p=>{
+  const t=now();
+  const mins=Math.floor((t-p.lastUpdated)/60000);
+  const live=p.cash + mins*CASH_PER_MIN;
+  const total=Math.floor((t-p.createdAt)/60000);
+  const hrs=Math.floor(total/60);
+  const minsLeft=total%60;
+  return {hrs, mins:minsLeft, live};
+};
+
+const render=p=>{
+  if(!p){
+    center.innerHTML='<div>tag: —</div><div>time: —</div><div>cash: —</div>';
+    return;
+  }
+  const {hrs,mins,live}=calc(p);
+  const clockChar=`<span style="color:#a855f7">${spinners[spinIndex]}</span>`;
+  center.innerHTML=`
+    <div>tag: ${p.tag}</div>
+    <div>time: ${hrs} h ${String(mins).padStart(2,'0')} m ${clockChar}</div>
+    <div>cash: ${fmtMoney(live)} <span class="pulse-dot">•</span></div>`;
+};
+
+const persist=async p=>{
+  const t=now();
+  const mins=Math.floor((t-p.lastUpdated)/60000);
+  if(mins>=1){ p.cash+=mins*CASH_PER_MIN; p.lastUpdated+=mins*60000; await db.player.put(p);}
+};
+
+const taxTick=async()=>{
+  const t=now();
+  if(current && t-lastTax>=TAX_INTERVAL){
+    lastTax=t;
+    current.cash=Math.max(0,current.cash - TAX_RATE);
+    await db.player.put(current);
+    center.innerHTML=`system maintenance executed.<br>wallet: -${fmtMoney(TAX_RATE)}`;
+    setTimeout(()=>render(current),1500);
+  }
+};
+
+const startTicker=()=>{
+  if(ticker) clearInterval(ticker);
+  ticker=setInterval(async()=>{
+    if(current){ render(current); await persist(current); await taxTick(); }
+  },1000);
+};
+
+const showPopup=()=>{ popup.style.display='block'; tagInput.focus(); };
+const hidePopup=()=>{ popup.style.display='none'; };
+
+async function saveFlow(){
+  const all=await db.player.toArray();
+  const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='gn4_save.json';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  hidePopup();
+}
+
+async function loadFlow(){
+  fileInput.value=''; fileInput.click();
+  fileInput.onchange=async e=>{
+    const f=e.target.files[0];
+    if(!f){hidePopup(); return;}
+    try{
+      const text=await f.text();
+      const arr=JSON.parse(text);
+      await db.transaction('rw',db.player,async()=>{
+        await db.player.clear();
+        await db.player.bulkAdd(arr);
+      });
+      current=arr[0];
+      hidePopup();
+    }catch(err){console.error(err);}
+  };
+}
+
+async function resetFlow(){
+  await db.player.clear();
+  current=null;
+  localStorage.removeItem('gn4_tag');
+  hidePopup();
+  render(null);
+}
+
+async function createFlow(){
+  const val=tagInput.value.trim();
+  if(!/^[0-9]{3}$/.test(val)){ hidePopup(); return; }
+  let p=await db.player.get(val);
+  if(!p){
+    const t=now();
+    p={tag:val,createdAt:t,lastUpdated:t,cash:0};
+    await db.player.put(p);
+  }
+  current=p;
+  localStorage.setItem('gn4_tag',val);
+  hidePopup();
+  render(p);
+}
+
+document.getElementById('save-btn').onclick=saveFlow;
+document.getElementById('load-btn').onclick=loadFlow;
+document.getElementById('reset-btn').onclick=resetFlow;
+tagInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter') createFlow();
+  if(e.key==='Escape') hidePopup();
+});
+document.addEventListener('dblclick',()=>{ 
+  popup.style.display==='block'?hidePopup():showPopup();
+});
+
+const last=localStorage.getItem('gn4_tag');
+if(last){
+  const p=await db.player.get(last);
+  if(p) current=p;
+}
+render(current);
+startTicker();
+})();
+</script>
+</body>
+</html>
