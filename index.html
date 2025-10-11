@@ -20,13 +20,8 @@
     font-weight:bold;
     font-size:1.2rem;
   }
-  #wrapper{ 
-    text-align:center; 
-    margin-top:50px;
-  }
-  #center{ 
-    line-height:1.6; 
-  }
+  #wrapper{ text-align:center; margin-top:50px; }
+  #center{ line-height:1.6; }
   .popup{
     position:absolute;
     top:50%; left:50%;
@@ -59,10 +54,8 @@
 </head>
 <body>
 
-<!-- HEADER STICKY -->
 <div id="header">gailnireus</div>
 
-<!-- STATS WRAPPER -->
 <div id="wrapper">
   <div id="center">
     <div>tag: —</div>
@@ -71,7 +64,6 @@
   </div>
 </div>
 
-<!-- POPUP BOX -->
 <div id="popup" class="popup">
   <div>enter 3-digit tag:</div>
   <input id="tag-input" maxlength="3" />
@@ -84,17 +76,15 @@
 
 <input type="file" id="file-input" accept=".json" style="display:none"/>
 
-<!-- DEXIE & SCRIPT -->
 <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
 <script>
 (async function(){
 const CASH_PER_MIN = 0.01;
 const TAX_RATE = 0.01;
-const TAX_INTERVAL = 7 * 60 * 1000;
-let lastTax = Date.now();
+const TAX_INTERVAL = 7 * 60 * 1000; // 7 min
 
 const db = new Dexie('gn_db_v1');
-db.version(1).stores({ player:'tag,cash,createdAt,lastUpdated' });
+db.version(1).stores({ player:'tag,cash,createdAt,lastUpdated,lastTax' });
 
 const center = document.getElementById('center');
 const popup = document.getElementById('popup');
@@ -136,16 +126,26 @@ const render=p=>{
 const persist=async p=>{
   const t=now();
   const mins=Math.floor((t-p.lastUpdated)/60000);
-  if(mins>=1){ p.cash+=mins*CASH_PER_MIN; p.lastUpdated+=mins*60000; await db.player.put(p);}
+  if(mins>=1){ 
+    p.cash+=mins*CASH_PER_MIN; 
+    p.lastUpdated+=mins*60000; 
+    await db.player.put(p);
+  }
 };
 
+// ✅ FIXED TAX LOGIC — executes exactly every 7 min
 const taxTick=async()=>{
+  if(!current) return;
   const t=now();
-  if(current && t-lastTax>=TAX_INTERVAL){
-    lastTax=t;
-    current.cash=Math.max(0,current.cash - TAX_RATE);
+  if(!current.lastTax) current.lastTax=t;
+  const diff = t - current.lastTax;
+  if(diff >= TAX_INTERVAL){
+    const times = Math.floor(diff / TAX_INTERVAL);
+    const totalTax = TAX_RATE * times;
+    current.lastTax = t;
+    current.cash = Math.max(0, current.cash - totalTax);
     await db.player.put(current);
-    center.innerHTML=`system maintenance executed.<br>wallet: -${fmtMoney(TAX_RATE)}`;
+    center.innerHTML = `system maintenance executed.<br>cash: -${fmtMoney(totalTax)}`;
     setTimeout(()=>render(current),1500);
   }
 };
@@ -153,7 +153,11 @@ const taxTick=async()=>{
 const startTicker=()=>{
   if(ticker) clearInterval(ticker);
   ticker=setInterval(async()=>{
-    if(current){ render(current); await persist(current); await taxTick(); }
+    if(current){ 
+      await persist(current); 
+      await taxTick();
+      render(current);
+    }
   },1000);
 };
 
@@ -196,19 +200,35 @@ async function resetFlow(){
   render(null);
 }
 
+// 🧠 hanya boleh ada satu tag aktif
 async function createFlow(){
   const val=tagInput.value.trim();
   if(!/^[0-9]{3}$/.test(val)){ hidePopup(); return; }
-  let p=await db.player.get(val);
-  if(!p){
-    const t=now();
-    p={tag:val,createdAt:t,lastUpdated:t,cash:0};
-    await db.player.put(p);
+
+  if(current){  // kalau dah ada tag aktif
+    if(current.tag === val){
+      // login semula tag sama
+      render(current);
+    } else {
+      center.innerHTML = "⚠️ only one tag allowed. reset to create new.";
+      setTimeout(()=>render(current),2000);
+    }
+    hidePopup();
+    return;
   }
-  current=p;
+
+  let existing = await db.player.get(val);
+  if(existing){
+    current = existing; // login
+  } else {
+    const t=now();
+    current={tag:val,createdAt:t,lastUpdated:t,lastTax:t,cash:0};
+    await db.player.put(current);
+  }
+
   localStorage.setItem('gn4_tag',val);
   hidePopup();
-  render(p);
+  render(current);
 }
 
 document.getElementById('save-btn').onclick=saveFlow;
